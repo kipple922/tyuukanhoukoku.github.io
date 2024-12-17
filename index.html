@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ま</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <label>
+            Line Width:
+            <input type="range" id="lineWidth" min="1" max="20" value="5">
+        </label>
+    </div>
+    <canvas id="drawingCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        const lineWidthPicker = document.getElementById('lineWidth');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let drawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let lastAngle = null;
+
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let oscillator = null;
+
+        function startOscillator() {
+            oscillator = audioContext.createOscillator();
+            oscillator.type = 'triangle';
+            oscillator.connect(audioContext.destination);
+            oscillator.start();
+        }
+
+        function stopOscillator() {
+            if (oscillator) {
+                oscillator.stop();
+                oscillator = null;
+            }
+        }
+
+        function calculateFrequency(angleChange) {
+            return Math.min(2000, Math.max(200, 400 + angleChange * 200));
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            drawing = true;
+            lastX = e.offsetX;
+            lastY = e.offsetY;
+            lastAngle = null;
+            startOscillator();
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+            lastAngle = null;
+            stopOscillator();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!drawing) return;
+
+            const x = e.offsetX;
+            const y = e.offsetY;
+
+            // Draw the line
+            ctx.strokeStyle = '#000000'; // Fixed to black color
+            ctx.lineWidth = lineWidthPicker.value;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+
+            // Calculate angle change
+            const dx = x - lastX;
+            const dy = y - lastY;
+            const angle = Math.atan2(dy, dx);
+
+            if (lastAngle !== null) {
+                const angleChange = Math.abs(angle - lastAngle);
+                if (oscillator) {
+                    oscillator.frequency.setValueAtTime(calculateFrequency(angleChange), audioContext.currentTime);
+                }
+            }
+
+            lastX = x;
+            lastY = y;
+            lastAngle = angle;
+        });
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+            }
+        });
+    </script>
+</body>
+</html>
