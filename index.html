@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ま</title>
+    <title>Interactive Drawing with Sound</title>
     <style>
         body {
             margin: 0;
@@ -12,32 +12,13 @@
         canvas {
             display: block;
         }
-        .controls {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 10;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <label>
-            Line Width:
-            <input type="range" id="lineWidth" min="1" max="20" value="5">
-        </label>
-    </div>
     <canvas id="drawingCanvas"></canvas>
-
     <script>
         const canvas = document.getElementById('drawingCanvas');
         const ctx = canvas.getContext('2d');
-        const lineWidthPicker = document.getElementById('lineWidth');
-        
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
@@ -46,12 +27,21 @@
         let lastY = 0;
         let lastAngle = null;
 
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let audioContext = null;
         let oscillator = null;
+
+        function startAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (!oscillator) {
+                startOscillator();
+            }
+        }
 
         function startOscillator() {
             oscillator = audioContext.createOscillator();
-            oscillator.type = 'triangle';
+            oscillator.type = 'sine';
             oscillator.connect(audioContext.destination);
             oscillator.start();
         }
@@ -66,30 +56,13 @@
         function calculateFrequency(angleChange) {
             return Math.min(2000, Math.max(200, 400 + angleChange * 200));
         }
-function createDistortionCurve(amount) {
-    const k = typeof amount === 'number' ? amount : 50;
-    const n_samples = 44100;
-    const curve = new Float32Array(n_samples);
-    const deg = Math.PI / 180;
-    for (let i = 0; i < n_samples; ++i) {
-        const x = (i * 2) / n_samples - 1;
-        curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
-    }
-    return curve;
-}
-
-const distortion = audioContext.createWaveShaper();
-distortion.curve = createDistortionCurve(400);
-distortion.oversample = '4x';
-oscillator.connect(distortion);
-distortion.connect(audioContext.destination);
 
         canvas.addEventListener('mousedown', (e) => {
             drawing = true;
             lastX = e.offsetX;
             lastY = e.offsetY;
             lastAngle = null;
-            startOscillator();
+            startAudioContext();
         });
 
         canvas.addEventListener('mouseup', () => {
@@ -104,15 +77,13 @@ distortion.connect(audioContext.destination);
             const x = e.offsetX;
             const y = e.offsetY;
 
-            // Draw the line
-            ctx.strokeStyle = '#000000'; // Fixed to black color
-            ctx.lineWidth = lineWidthPicker.value;
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 5;
             ctx.beginPath();
             ctx.moveTo(lastX, lastY);
             ctx.lineTo(x, y);
             ctx.stroke();
 
-            // Calculate angle change
             const dx = x - lastX;
             const dy = y - lastY;
             const angle = Math.atan2(dy, dx);
@@ -136,7 +107,7 @@ distortion.connect(audioContext.destination);
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Backspace' || e.key === 'Delete') {
-                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
         });
     </script>
